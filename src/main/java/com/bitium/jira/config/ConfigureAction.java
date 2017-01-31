@@ -8,6 +8,7 @@ import java.util.Collection;
 import com.atlassian.crowd.embedded.api.Group;
 import com.atlassian.jira.component.ComponentAccessor;
 import com.atlassian.jira.security.groups.GroupManager;
+
 import org.apache.commons.lang.StringUtils;
 
 import com.atlassian.jira.web.action.JiraWebActionSupport;
@@ -21,10 +22,15 @@ public class ConfigureAction extends JiraWebActionSupport {
 	private String entityId;
 	private String uidAttribute;
 	private String autoCreateUser;
-    private String defaultAutoCreateUserGroup;
+	private String defaultAutoCreateUserGroup;
 	private String x509Certificate;
 	private String idpRequired;
+	private String redirectUrl;
 	private String maxAuthenticationAge;
+	private String urlOnLoginError;
+	private String loggedOutPageTemplate;
+
+
 	private String success = "";
 	private String submitAction;
 	private ArrayList<String> existingGroups;
@@ -69,11 +75,11 @@ public class ConfigureAction extends JiraWebActionSupport {
 	public void setUidAttribute(String uidAttribute) {
 		this.uidAttribute = uidAttribute;
 	}
-	
+
 	public void setMaxAuthenticationAge(String maxAuthenticationAge) {
-		this.maxAuthenticationAge=maxAuthenticationAge;
+		this.maxAuthenticationAge = maxAuthenticationAge;
 	}
-	
+
 	public String getMaxAuthenticationAge() {
 		return this.maxAuthenticationAge;
 	}
@@ -86,15 +92,7 @@ public class ConfigureAction extends JiraWebActionSupport {
 		this.autoCreateUser = autoCreateUser;
 	}
 
-    public String getDefaultAutoCreateUserGroup() {
-        return defaultAutoCreateUserGroup;
-    }
-
-    public void setDefaultAutoCreateUserGroup(String defaultAutoCreateUserGroup) {
-        this.defaultAutoCreateUserGroup = defaultAutoCreateUserGroup;
-    }
-
-    public String getLogoutUrl() {
+	public String getLogoutUrl() {
 		return logoutUrl;
 	}
 
@@ -110,6 +108,38 @@ public class ConfigureAction extends JiraWebActionSupport {
 		this.loginUrl = loginUrl;
 	}
 
+	public String getRedirectUrl() {
+		return redirectUrl;
+	}
+
+	public void setRedirectUrl(String redirectUrl) {
+		this.redirectUrl = redirectUrl;
+	}
+
+	public String getDefaultAutoCreateUserGroup() {
+		return defaultAutoCreateUserGroup;
+	}
+
+	public void setDefaultAutoCreateUserGroup(String defaultAutoCreateUserGroup) {
+		this.defaultAutoCreateUserGroup = defaultAutoCreateUserGroup;
+	}
+	
+	public String getUrlOnLoginError() {
+		return urlOnLoginError;
+	}
+
+	public void setUrlOnLoginError(String urlOnLoginError) {
+		this.urlOnLoginError = urlOnLoginError;
+	}
+
+	public String getLoggedOutPageTemplate() {
+		return loggedOutPageTemplate;
+	}
+
+	public void setLoggedOutPageTemplate(String loggedOutPageTemplate) {
+		this.loggedOutPageTemplate = loggedOutPageTemplate;
+	}	
+
 	public String getSuccess() {
 		return success;
 	}
@@ -119,13 +149,13 @@ public class ConfigureAction extends JiraWebActionSupport {
 	}
 
 	public ArrayList<String> getExistingGroups() {
-        GroupManager groupManager = ComponentAccessor.getGroupManager();
-        Collection<Group> groupObjects = groupManager.getAllGroups();
-        existingGroups = new ArrayList<String>();
-        for (Group groupObject : groupObjects) {
-            existingGroups.add(groupObject.getName());
-        }
-        setExistingGroups(existingGroups);
+		GroupManager groupManager = ComponentAccessor.getGroupManager();
+		Collection<Group> groupObjects = groupManager.getAllGroups();
+		existingGroups = new ArrayList<String>();
+		for (Group groupObject : groupObjects) {
+			existingGroups.add(groupObject.getName());
+		}
+		setExistingGroups(existingGroups);
 		return existingGroups;
 	}
 
@@ -159,7 +189,7 @@ public class ConfigureAction extends JiraWebActionSupport {
 			}
 		}
 		if (StringUtils.isBlank(getLogoutUrl())) {
-			//addActionError(getText("saml2Plugin.admin.logoutUrlEmpty"));
+			// addActionError(getText("saml2Plugin.admin.logoutUrlEmpty"));
 		} else {
 			try {
 				new URL(getLogoutUrl());
@@ -192,13 +222,12 @@ public class ConfigureAction extends JiraWebActionSupport {
 		} else {
 			setAutoCreateUser("true");
 		}
-		
-		if(StringUtils.isBlank(getMaxAuthenticationAge()) || (!StringUtils.isNumeric(getMaxAuthenticationAge()))){
+
+		if (StringUtils.isBlank(getMaxAuthenticationAge()) || (!StringUtils.isNumeric(getMaxAuthenticationAge()))) {
 			addErrorMessage(getText("saml2Plugin.admin.maxAuthenticationAgeInvalid"));
 		}
 
 	}
-
 
 	public String doExecute() throws Exception {
 		if (getSubmitAction() == null || getSubmitAction().equals("")) {
@@ -207,6 +236,18 @@ public class ConfigureAction extends JiraWebActionSupport {
 			setEntityId(saml2Config.getIdpEntityId());
 			setUidAttribute(saml2Config.getUidAttribute());
 			setX509Certificate(saml2Config.getX509Certificate());
+			setRedirectUrl(saml2Config.getRedirectUrl());
+			setLoggedOutPageTemplate(saml2Config.getLoggedOutPageTemplate());
+			long maxAuthenticationAge = saml2Config.getMaxAuthenticationAge();
+
+			// Default Value
+			if (maxAuthenticationAge == Long.MIN_VALUE) {
+				setMaxAuthenticationAge("7200");
+			}
+			// Stored Value
+			else {
+				setMaxAuthenticationAge(String.valueOf(maxAuthenticationAge));
+			}
 			String idpRequired = saml2Config.getIdpRequired();
 			if (idpRequired != null) {
 				setIdpRequired(idpRequired);
@@ -219,18 +260,7 @@ public class ConfigureAction extends JiraWebActionSupport {
 			} else {
 				setAutoCreateUser("false");
 			}
-			
-			long maxAuthenticationAge = saml2Config.getMaxAuthenticationAge();
-			
-			//Default Value
-			if(maxAuthenticationAge==Long.MIN_VALUE){
-				setMaxAuthenticationAge("7200");
-			}
-			//Stored Value
-			else{
-				setMaxAuthenticationAge(String.valueOf(maxAuthenticationAge));
-			}
-			
+
 			String defaultAutocreateUserGroup = saml2Config.getAutoCreateUserDefaultGroup();
 			if (defaultAutocreateUserGroup.isEmpty()) {
 				// NOTE: Set the default to "jira-users".
@@ -246,10 +276,13 @@ public class ConfigureAction extends JiraWebActionSupport {
 		saml2Config.setUidAttribute(getUidAttribute());
 		saml2Config.setX509Certificate(getX509Certificate());
 		saml2Config.setIdpRequired(getIdpRequired());
+		saml2Config.setRedirectUrl(getRedirectUrl());
 		saml2Config.setAutoCreateUser(getAutoCreateUser());
-        saml2Config.setAutoCreateUserDefaultGroup(getDefaultAutoCreateUserGroup());
-        saml2Config.setMaxAuthenticationAge(Long.parseLong(getMaxAuthenticationAge()));
-        
+		saml2Config.setAutoCreateUserDefaultGroup(getDefaultAutoCreateUserGroup());
+		saml2Config.setMaxAuthenticationAge(Long.parseLong(getMaxAuthenticationAge()));
+		saml2Config.setUrlOnLoginError(getUrlOnLoginError());
+		saml2Config.setLoggedOutPageTemplate(getLoggedOutPageTemplate());
+
 		setSuccess("success");
 		return "success";
 	}

@@ -1,0 +1,12 @@
+#disable_html_escaping()
+<head>
+    <meta name="decorator" content="message"/>
+    <title>$i18n.getText("saml2.plugin.logout.title")</title>
+</head>
+<body class="aui-layout aui-style-default page-type-message"  >
+	<div class="aui-page-panel aui-plugin-message">
+    	<div class="aui-page-panel-inner">
+			$action.content
+        </div>
+    </div>
+</body>
